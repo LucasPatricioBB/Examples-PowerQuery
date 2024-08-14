@@ -1,3 +1,5 @@
+/////// GERAL
+
 let
     ColaboradoresTabela = Excel.CurrentWorkbook(){[Name="Colaboradores"]}[Content],
     ColaboradoresFiltrados = Table.SelectRows(ColaboradoresTabela, each [#"Resultados por site?"] = "SIM"),
@@ -33,3 +35,109 @@ in
     Resultado = Value.NativeQuery(TabelaSQL, ConsultaSQL)
 in
     Resultado
+
+/////// GOLD - ID
+
+let
+    // Carregar a tabela "Atributos_Arquivo"
+    Atributos = Excel.CurrentWorkbook(){[Name="Atributos_Arquivo"]}[Content],
+
+    // Extrair a lista de IDs distintos da coluna "ID" e converter para texto
+    ListaIDs = List.Distinct(Atributos[ID]),
+    ListaIDsTexto = List.Transform(ListaIDs, each Text.From(_)),
+
+    // Converter a lista em uma string formatada para a consulta SQL
+    IDs_SQL = Text.Combine(List.Transform(ListaIDsTexto, each "'" & _ & "'"), ","),
+
+    // Carregar os dados restantes
+    Servidor = "PRIMNO3",
+    BancoDeDados = "ST_ROBBYSON",
+    TabelaSQL = Sql.Database(Servidor, BancoDeDados),
+
+    // Sua consulta SQL aqui
+    ConsultaSQL = "
+        SELECT
+            ATRIBUTO,
+            IDINDICADOR,
+            CASE WHEN COUNT(resultado) > 0 THEN 1 ELSE 0 END as DADO
+        FROM [ST_ROBBYSON].[dbo].[vw_IndicadoresGeral] as a with (nolock)
+        JOIN [VerticalRobbyson].[rlt].[hmn] as h with (nolock) on (a.MATRICULA = h.matricula and a.DATA=h.data)
+        WHERE
+            a.data >= (dateadd(month, -4, dateadd(day, 1, eomonth(getdate()))))
+            AND a.idindicador IN (" & IDs_SQL & ")
+            AND h.atributo IS NOT NULL
+            AND idindicador NOT IN ('49','48','51','34','55','56','57','58','59','86','467','522')
+        GROUP BY IDINDICADOR, ATRIBUTO
+    ",
+
+    // Executar a consulta SQL
+    Resultado = Value.NativeQuery(TabelaSQL, ConsultaSQL),
+
+    // Remover coluna "DADO"
+    ColunasRemovidas = Table.RemoveColumns(Resultado, {"DADO"}),
+
+    // Mesclar colunas "IDINDICADOR" e "ATRIBUTO" em uma nova coluna "Chave"
+    ColunasMescladas = Table.CombineColumns(
+        Table.TransformColumnTypes(ColunasRemovidas, {{"IDINDICADOR", type text}}, "pt-BR"),
+        {"IDINDICADOR", "ATRIBUTO"},
+        Combiner.CombineTextByDelimiter("_", QuoteStyle.None),
+        "Chave"
+    ),
+
+    // Obter a coluna "Chave"
+    Chave = ColunasMescladas[Chave]
+in
+    Chave
+
+/////// ATRIBUTO GOLD
+
+let
+    // Carregar a tabela "Atributos_Arquivo"
+    Atributos = Excel.CurrentWorkbook(){[Name="Atributos_Arquivo"]}[Content],
+
+    // Extrair a lista de IDs distintos da coluna "ID" e converter para texto
+    ListaAtributo = List.Distinct(Atributos[Atributo]),
+    ListaAtributoTexto = List.Transform(ListaAtributo, each Text.From(_)),
+
+    // Converter a lista em uma string formatada para a consulta SQL
+    Atributo_SQL = Text.Combine(List.Transform(ListaAtributoTexto, each "'" & _ & "'"), ","),
+
+    // Carregar os dados restantes
+    Servidor = "PRIMNO3",
+    BancoDeDados = "ST_ROBBYSON",
+    TabelaSQL = Sql.Database(Servidor, BancoDeDados),
+
+    // Sua consulta SQL aqui
+    ConsultaSQL = "
+        SELECT
+            ATRIBUTO,
+            IDINDICADOR,
+            CASE WHEN COUNT(resultado) > 0 THEN 1 ELSE 0 END as DADO
+        FROM [ST_ROBBYSON].[dbo].[vw_IndicadoresGeral] as a with (nolock)
+        JOIN [VerticalRobbyson].[rlt].[hmn] as h with (nolock) on (a.MATRICULA = h.matricula and a.DATA=h.data)
+        WHERE
+            a.data >= (dateadd(month, -4, dateadd(day, 1, eomonth(getdate()))))
+            AND h.atributo IN (" & Atributo_SQL & ")
+           -- AND h.atributo IS NOT NULL
+            AND idindicador NOT IN ('49','48','51','34','55','56','57','58','59','86','467','522')
+        GROUP BY IDINDICADOR, ATRIBUTO
+    ",
+
+    // Executar a consulta SQL
+    Resultado = Value.NativeQuery(TabelaSQL, ConsultaSQL),
+
+    // Remover coluna "DADO"
+    ColunasRemovidas = Table.RemoveColumns(Resultado, {"DADO"}),
+
+    // Mesclar colunas "IDINDICADOR" e "ATRIBUTO" em uma nova coluna "Chave"
+    ColunasMescladas = Table.CombineColumns(
+        Table.TransformColumnTypes(ColunasRemovidas, {{"IDINDICADOR", type text}}, "pt-BR"),
+        {"IDINDICADOR", "ATRIBUTO"},
+        Combiner.CombineTextByDelimiter("_", QuoteStyle.None),
+        "Chave"
+    ),
+
+    // Obter a coluna "Chave"
+    Chave = ColunasMescladas[Chave]
+in
+    Chave
