@@ -1,0 +1,35 @@
+let
+    ColaboradoresTabela = Excel.CurrentWorkbook(){[Name="Colaboradores"]}[Content],
+    ColaboradoresFiltrados = Table.SelectRows(ColaboradoresTabela, each [#"Resultados por site?"] = "SIM"),
+    MatriculasLista = ColaboradoresFiltrados[MATRICULA],
+    MatriculasTexto = Text.Combine(List.Transform(MatriculasLista, each Text.From(_)), ", "),
+    Servidor = "PRIMNO3",
+    BancoDeDados = "VERTICALROBBYSON",
+    TabelaSQL = Sql.Database(Servidor, BancoDeDados),
+    ConsultaSQL = "
+	
+	Query SQL
+	(" & MatriculasTexto & ")
+	
+	",
+    Resultado = Value.NativeQuery(TabelaSQL, ConsultaSQL)
+in
+    Resultado
+	
+	let
+    ColaboradoresTabela = Excel.CurrentWorkbook(){[Name="Atributos_Arquivo"]}[Content],
+    ColaboradoresFiltrados = Table.SelectRows(ColaboradoresTabela),
+    MatriculasLista = ColaboradoresFiltrados[Atributo],
+    MatriculasTexto = Text.Combine(List.Transform(MatriculasLista, each Text.From(_)), ", "),
+    Servidor = "PRIMNO3",
+    BancoDeDados = "VERTICALROBBYSON",
+    TabelaSQL = Sql.Database(Servidor, BancoDeDados),
+    ConsultaSQL = "
+	
+	Query SQL
+	(" & MatriculasTexto & ")
+	
+	",
+    Resultado = Value.NativeQuery(TabelaSQL, ConsultaSQL)
+in
+    Resultado
